@@ -13,7 +13,7 @@ const UI_TEXT = {
   en: {
     appTitle: "Serpent",
     tagline: "Identify Snakes in Seconds",
-    subTagline: "AI-powered identification for your safety. Focus on Asian & Global species.",
+    subTagline: "AI-powered identification for your safety.\nFocus on Asian & Global species.",
     searchPlaceholder: "Search by name (e.g. 'King Cobra')",
     takePhoto: "Take a Photo",
     uploadText: "Use your camera or upload an image",
@@ -36,12 +36,21 @@ const UI_TEXT = {
     mapLegend: "Colored by Continent",
     searchAnother: "Identify Another Snake",
     detailedProfile: "Detailed Species Profile",
-    altNames: "Alternative Names"
+    altNames: "Alternative Names",
+    detailFamily: "Family",
+    detailRange: "Range",
+    detailHabitat: "Habitat",
+    detailActiveTime: "Active Time",
+    detailDiet: "Diet",
+    detailVenom: "Venom",
+    detailDanger: "Danger",
+    detailPrevention: "Prevention",
+    detailBehavior: "Behavior"
   },
   th: {
     appTitle: "Serpent",
     tagline: "ระบุชนิดงูได้ในไม่กี่วินาที",
-    subTagline: "ระบบ AI เพื่อความปลอดภัยของคุณ เน้นสายพันธุ์เอเชียและทั่วโลก",
+    subTagline: "ระบบ AI เพื่อความปลอดภัยของคุณ\nเน้นสายพันธุ์เอเชียและทั่วโลก",
     searchPlaceholder: "ค้นหาด้วยชื่อ (เช่น 'งูจงอาง')",
     takePhoto: "ถ่ายรูป",
     uploadText: "ใช้กล้องหรืออัปโหลดรูปภาพ",
@@ -64,7 +73,16 @@ const UI_TEXT = {
     mapLegend: "แยกสีตามทวีป",
     searchAnother: "ค้นหางูตัวอื่น",
     detailedProfile: "ข้อมูลจำเพาะสายพันธุ์",
-    altNames: "ชื่อเรียกอื่นๆ"
+    altNames: "ชื่อเรียกอื่นๆ",
+    detailFamily: "วงศ์",
+    detailRange: "พื้นที่แพร่กระจาย",
+    detailHabitat: "ที่อยู่อาศัย",
+    detailActiveTime: "เวลาที่ออกหากิน",
+    detailDiet: "อาหาร",
+    detailVenom: "พิษ",
+    detailDanger: "อันตราย",
+    detailPrevention: "การป้องกัน",
+    detailBehavior: "พฤติกรรม"
   }
 };
 
@@ -148,9 +166,10 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: any, label: string, val
 const SnakeAnimation = () => (
   <div className="relative w-64 h-64 flex items-center justify-center">
     <img 
-      src="https://img1.picmix.com/output/stamp/normal/2/1/5/6/2376512_3906f.gif" 
+      src="/images/animated-snake.gif" 
       alt="Analyzing..." 
       className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"
+      style={{ animation: 'loop 2s infinite' }}
     />
   </div>
 );
@@ -354,15 +373,15 @@ const SnakeIdentifier: React.FC = () => {
                  <BookOpen size={16} /> {t.detailedProfile}
                </h3>
                
-               <DetailRow icon={Info} label="Family" value={details.family} />
-               <DetailRow icon={Globe} label="Range" value={details.range} />
-               <DetailRow icon={Leaf} label="Habitat" value={details.habitat} />
-               <DetailRow icon={Clock} label="Active Time" value={details.active_time} />
-               <DetailRow icon={Activity} label="Diet" value={details.diet} />
-               <DetailRow icon={Skull} label="Venom" value={details.venom_toxicity} />
-               <DetailRow icon={AlertOctagon} label="Danger" value={details.danger_to_humans} />
-               <DetailRow icon={Shield} label="Prevention" value={details.prevention} />
-               <DetailRow icon={ThermometerSun} label="Behavior" value={details.behavior} />
+               <DetailRow icon={Info} label={t.detailFamily} value={details.family} />
+               <DetailRow icon={Globe} label={t.detailRange} value={details.range} />
+               <DetailRow icon={Leaf} label={t.detailHabitat} value={details.habitat} />
+               <DetailRow icon={Clock} label={t.detailActiveTime} value={details.active_time} />
+               <DetailRow icon={Activity} label={t.detailDiet} value={details.diet} />
+               <DetailRow icon={Skull} label={t.detailVenom} value={details.venom_toxicity} />
+               <DetailRow icon={AlertOctagon} label={t.detailDanger} value={details.danger_to_humans} />
+               <DetailRow icon={Shield} label={t.detailPrevention} value={details.prevention} />
+               <DetailRow icon={ThermometerSun} label={t.detailBehavior} value={details.behavior} />
              </div>
 
             {/* Visual Comparison */}
@@ -538,7 +557,7 @@ const SnakeIdentifier: React.FC = () => {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">{t.tagline}</span>
              )}
           </h1>
-          <p className="text-slate-400">{t.subTagline}</p>
+          <p className="text-slate-400 whitespace-pre-line">{t.subTagline}</p>
         </div>
 
         {/* Search Bar */}
