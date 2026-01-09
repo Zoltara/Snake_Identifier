@@ -1,0 +1,7 @@
+{
+  "name": "SerpentID",
+  "description": "AI-powered snake identification and safety guide focusing on Asian and Global species.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
