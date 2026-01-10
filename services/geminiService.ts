@@ -130,6 +130,7 @@ const schemaDescription = `
   "found": boolean (true if snake identified with 85%+ confidence),
   "needs_clarification": boolean (true if input is ambiguous like "python", "cobra", "viper" - generic terms that match multiple species),
   "suggestions": string[] (if needs_clarification is true, list 5-8 specific species names the user might mean, e.g. for "python": ["Ball Python", "Burmese Python", "Reticulated Python", "Royal Python", "Green Tree Python"]),
+  "related_species": string[] (always include 4-6 other snake species from the same family for further exploration, e.g. if identified as "King Cobra", include other Elapidae like "Indian Cobra", "Banded Krait", "Blue Malayan Coral Snake"),
   "scientific_name": string,
   "confidence": number (0-100),
   "is_venomous": boolean,
@@ -158,11 +159,12 @@ export const identifySnake = async (input: string, type: 'image' | 'text'): Prom
   const systemPrompt = `You are an expert herpetologist specializing in snake identification.
 
 INSTRUCTIONS:
-- If analyzing an image, carefully examine: head shape, scale patterns, coloration, body proportions, eye characteristics
+- If analyzing an image, carefully examine: head shape, scale patterns, coloration, body proportions, eye characteristics. Identify it directly - do NOT ask for clarification on images.
 - Only set "found": true if you are 85%+ confident in the identification
 - If confidence is below 85%, set "found": false
-- For TEXT searches: If the input is a generic/ambiguous term (like "python", "cobra", "viper", "boa", "rattlesnake", "mamba") that could refer to multiple species, set "needs_clarification": true and provide 5-8 specific species in "suggestions" array
+- For TEXT searches ONLY: If the input is a generic/ambiguous term (like "python", "cobra", "viper", "boa", "rattlesnake", "mamba") that could refer to multiple species, set "needs_clarification": true and provide 5-8 specific species in "suggestions" array
 - If the input is already specific (like "Ball Python", "King Cobra", "Burmese Python"), identify it directly
+- ALWAYS include "related_species" with 4-6 other snakes from the same family for user exploration
 - Provide accurate bilingual data in English and Thai
 - Include comprehensive field guide details
 

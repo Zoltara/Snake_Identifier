@@ -37,6 +37,7 @@ export interface SnakeAnalysisResult {
   search_term: string;
   needs_clarification?: boolean;
   suggestions?: string[];
+  related_species?: string[];
   data: {
     en: LocalizedSnakeData;
     th: LocalizedSnakeData;

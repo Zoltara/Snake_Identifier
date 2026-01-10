@@ -47,7 +47,9 @@ const UI_TEXT = {
     detailPrevention: "Prevention",
     detailBehavior: "Behavior",
     didYouMean: "Did you mean one of these?",
-    selectSpecies: "Please select a specific species:"
+    selectSpecies: "Please select a specific species:",
+    relatedSpecies: "Related Species",
+    otherSnakesFrom: "Other snakes from the same family:"
   },
   th: {
     appTitle: "Serpent",
@@ -86,7 +88,9 @@ const UI_TEXT = {
     detailPrevention: "การป้องกัน",
     detailBehavior: "พฤติกรรม",
     didYouMean: "คุณหมายถึงอันไหน?",
-    selectSpecies: "กรุณาเลือกสายพันธุ์:"
+    selectSpecies: "กรุณาเลือกสายพันธุ์:",
+    relatedSpecies: "สายพันธุ์ที่เกี่ยวข้อง",
+    otherSnakesFrom: "งูชนิดอื่นในวงศ์เดียวกัน:"
   }
 };
 
@@ -209,8 +213,8 @@ const SnakeIdentifier: React.FC = () => {
       
       console.log('AI Result:', result); // Debug log
 
-      // Check if we need clarification (ambiguous search)
-      if ((result.needs_clarification || (!result.found && result.suggestions)) && result.suggestions && result.suggestions.length > 0) {
+      // Check if we need clarification (ambiguous search) - ONLY for text searches, not images
+      if (type === 'text' && (result.needs_clarification || (!result.found && result.suggestions)) && result.suggestions && result.suggestions.length > 0) {
         setSuggestions(result.suggestions);
         setView('home');
         return;
@@ -501,6 +505,34 @@ const SnakeIdentifier: React.FC = () => {
                   </a>
                </div>
             </div>
+
+            {/* Related Species from Same Family */}
+            {data.related_species && data.related_species.length > 0 && (
+              <div className="bg-slate-900/50 p-5 rounded-2xl border border-slate-800">
+                <h3 className="text-slate-400 text-sm uppercase tracking-wider font-bold mb-3 flex items-center gap-2">
+                  <Search size={16} /> {t.relatedSpecies}
+                </h3>
+                <p className="text-xs text-slate-500 mb-3">
+                  {t.otherSnakesFrom}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {data.related_species.map((species, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setSearchQuery(species);
+                        setImage(null);
+                        handleAnalyze(species, 'text');
+                      }}
+                      className="px-3 py-2 bg-slate-800 hover:bg-emerald-600 border border-slate-700 hover:border-emerald-500 rounded-lg text-sm text-white transition-all duration-200 flex items-center gap-2"
+                    >
+                      <ChevronRight size={14} className="text-emerald-400" />
+                      {species}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button 
               onClick={() => setView('home')}
