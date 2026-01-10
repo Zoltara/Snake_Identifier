@@ -45,7 +45,9 @@ const UI_TEXT = {
     detailVenom: "Venom",
     detailDanger: "Danger",
     detailPrevention: "Prevention",
-    detailBehavior: "Behavior"
+    detailBehavior: "Behavior",
+    didYouMean: "Did you mean one of these?",
+    selectSpecies: "Please select a specific species:"
   },
   th: {
     appTitle: "Serpent",
@@ -82,7 +84,9 @@ const UI_TEXT = {
     detailVenom: "พิษ",
     detailDanger: "อันตราย",
     detailPrevention: "การป้องกัน",
-    detailBehavior: "พฤติกรรม"
+    detailBehavior: "พฤติกรรม",
+    didYouMean: "คุณหมายถึงอันไหน?",
+    selectSpecies: "กรุณาเลือกสายพันธุ์:"
   }
 };
 
@@ -183,17 +187,34 @@ const SnakeIdentifier: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [history, setHistory] = useState<SnakeAnalysisResult[]>([]);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const t = UI_TEXT[lang];
+
+  const handleSuggestionClick = (snakeName: string) => {
+    setSuggestions([]);
+    setSearchQuery(snakeName);
+    handleAnalyze(snakeName, 'text');
+  };
 
   const handleAnalyze = async (input: string, type: 'image' | 'text') => {
     setView('analyzing');
     setError(null);
+    setSuggestions([]);
     setData(null);
     setShowDisclaimer(true);
 
     try {
       const result = await identifySnake(input, type);
+      
+      console.log('AI Result:', result); // Debug log
+
+      // Check if we need clarification (ambiguous search)
+      if ((result.needs_clarification || (!result.found && result.suggestions)) && result.suggestions && result.suggestions.length > 0) {
+        setSuggestions(result.suggestions);
+        setView('home');
+        return;
+      }
 
       if (!result.found) {
         let errorMsg = "Could not identify a snake. ";
@@ -560,6 +581,29 @@ const SnakeIdentifier: React.FC = () => {
                 </ul>
               </div>
             ) : null}
+          </div>
+        )}
+
+        {/* Suggestions for ambiguous searches */}
+        {suggestions.length > 0 && (
+          <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Search size={18} className="text-emerald-400" />
+              <p className="text-emerald-400 font-semibold">{t.didYouMean}</p>
+            </div>
+            <p className="text-slate-400 text-sm mb-3">{t.selectSpecies}</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((snakeName, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSuggestionClick(snakeName)}
+                  className="px-3 py-2 bg-slate-800 hover:bg-emerald-600 border border-slate-700 hover:border-emerald-500 rounded-lg text-sm text-white transition-all duration-200 flex items-center gap-2"
+                >
+                  <ChevronRight size={14} className="text-emerald-400" />
+                  {snakeName}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

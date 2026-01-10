@@ -128,6 +128,8 @@ async function callOpenRouterWithVision(
 const schemaDescription = `
 {
   "found": boolean (true if snake identified with 85%+ confidence),
+  "needs_clarification": boolean (true if input is ambiguous like "python", "cobra", "viper" - generic terms that match multiple species),
+  "suggestions": string[] (if needs_clarification is true, list 5-8 specific species names the user might mean, e.g. for "python": ["Ball Python", "Burmese Python", "Reticulated Python", "Royal Python", "Green Tree Python"]),
   "scientific_name": string,
   "confidence": number (0-100),
   "is_venomous": boolean,
@@ -159,6 +161,8 @@ INSTRUCTIONS:
 - If analyzing an image, carefully examine: head shape, scale patterns, coloration, body proportions, eye characteristics
 - Only set "found": true if you are 85%+ confident in the identification
 - If confidence is below 85%, set "found": false
+- For TEXT searches: If the input is a generic/ambiguous term (like "python", "cobra", "viper", "boa", "rattlesnake", "mamba") that could refer to multiple species, set "needs_clarification": true and provide 5-8 specific species in "suggestions" array
+- If the input is already specific (like "Ball Python", "King Cobra", "Burmese Python"), identify it directly
 - Provide accurate bilingual data in English and Thai
 - Include comprehensive field guide details
 
@@ -179,7 +183,13 @@ Analyze this snake image and identify the species. Provide complete field guide 
     } else {
       const textPrompt = `${systemPrompt}
 
-Provide complete field guide information for the snake species: "${input}"`;
+The user is searching for: "${input}"
+
+IMPORTANT: 
+- If "${input}" is a generic/ambiguous term that matches multiple snake species (like "python", "cobra", "viper", "boa", "rattlesnake", "mamba", "adder", "racer", "rat snake"), you MUST set "needs_clarification": true and provide 5-8 specific species names in "suggestions" array. Set "found": false in this case.
+- If "${input}" is already a specific species name (like "Ball Python", "King Cobra", "Burmese Python"), identify it directly with "found": true and "needs_clarification": false.
+
+Provide the response in the exact JSON schema format.`;
       
       responseText = await callOpenRouterWithVision(textPrompt, null);
     }

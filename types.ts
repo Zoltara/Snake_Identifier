@@ -35,6 +35,8 @@ export interface SnakeAnalysisResult {
   danger_level: 'Safe' | 'Moderate' | 'High' | 'Critical';
   locations: LocationData[];
   search_term: string;
+  needs_clarification?: boolean;
+  suggestions?: string[];
   data: {
     en: LocalizedSnakeData;
     th: LocalizedSnakeData;
