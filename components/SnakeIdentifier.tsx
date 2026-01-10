@@ -253,8 +253,8 @@ const SnakeIdentifier: React.FC = () => {
         {/* Navbar */}
         <nav className="p-6 flex justify-center items-center z-50 relative">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-400">
-              <img src="images/logo.png" alt="SerpentID Logo" className="w-full h-full object-cover" />
+            <div className="w-8 h-8 overflow-hidden">
+              <img src="/images/logo.png" alt="SerpentID Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-bold text-xl tracking-tight">{t.appTitle}<span className="text-emerald-500">ID</span></span>
           </div>
@@ -529,8 +529,8 @@ const SnakeIdentifier: React.FC = () => {
       {/* Navbar */}
       <nav className="p-6 flex justify-center items-center z-50 relative">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-400">
-            <img src="images/logo.png" alt="SerpentID Logo" className="w-full h-full object-cover" />
+          <div className="w-8 h-8 overflow-hidden">
+            <img src="/images/logo.png" alt="SerpentID Logo" className="w-full h-full object-contain" />
           </div>
           <span className="font-bold text-xl tracking-tight">{t.appTitle}<span className="text-emerald-500">ID</span></span>
         </div>
