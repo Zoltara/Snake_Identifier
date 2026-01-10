@@ -1,227 +1,208 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { SnakeAnalysisResult } from "../types";
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// OpenRouter API configuration
+const OPENROUTER_API_KEY = process.env.API_KEY;
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
-const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
+// Multiple vision models to try (in order of preference)
+const VISION_MODELS = [
+  "qwen/qwen-2-vl-7b-instruct:free",
+  "meta-llama/llama-3.2-11b-vision-instruct:free",
+  "google/gemini-2.0-flash-exp:free"
+];
 
-// Define the schema for structured JSON output
-const localizedDataSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    name: { type: Type.STRING },
-    description: { type: Type.STRING },
-    first_aid: { type: Type.ARRAY, items: { type: Type.STRING } },
-    toxicity_details: { type: Type.STRING },
-    fun_fact: { type: Type.STRING },
-    habitat_text: { type: Type.STRING },
-  },
-  required: ["name", "description", "first_aid", "toxicity_details", "fun_fact", "habitat_text"]
-};
+let currentModelIndex = 0;
 
-const detailedInfoSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    scientific_name: { type: Type.STRING },
-    family: { type: Type.STRING },
-    thai_names: { type: Type.ARRAY, items: { type: Type.STRING } },
-    other_names: { type: Type.ARRAY, items: { type: Type.STRING } },
-    range: { type: Type.STRING },
-    habitat: { type: Type.STRING },
-    active_time: { type: Type.STRING },
-    diet: { type: Type.STRING },
-    venom_toxicity: { type: Type.STRING },
-    danger_to_humans: { type: Type.STRING },
-    prevention: { type: Type.STRING },
-    behavior: { type: Type.STRING },
-  },
-  required: [
-    "scientific_name", "family", "thai_names", "other_names", 
-    "range", "habitat", "active_time", "diet", 
-    "venom_toxicity", "danger_to_humans", "prevention", "behavior"
-  ]
-};
+// Rate limiting helpers
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 2000; // 2 seconds between requests
 
-const snakeResponseSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    found: { type: Type.BOOLEAN, description: "True if a snake is identified in the image/text." },
-    scientific_name: { type: Type.STRING },
-    confidence: { type: Type.NUMBER, description: "Confidence score from 0-100." },
-    is_venomous: { type: Type.BOOLEAN },
-    danger_level: { type: Type.STRING, enum: ["Safe", "Moderate", "High", "Critical"] },
-    locations: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          country: { type: Type.STRING },
-          continent_code: { type: Type.STRING, description: "AS, AF, NA, SA, EU, OC" }
-        }
-      }
-    },
-    google_search_term: { type: Type.STRING },
-    data: {
-      type: Type.OBJECT,
-      properties: {
-        en: localizedDataSchema,
-        th: localizedDataSchema
-      },
-      required: ["en", "th"]
-    },
-    details: detailedInfoSchema
-  },
-  required: ["found", "scientific_name", "confidence", "is_venomous", "danger_level", "locations", "google_search_term", "data", "details"]
-};
+async function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-const validateImageQuality = async (base64Data: string): Promise<boolean> => {
-  try {
-    const parts = [
-      {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: base64Data
-        }
-      },
-      { 
-        text: `Analyze this image and respond with ONLY "snake_present" if there is a clear, identifiable snake in the image, or "not_a_snake" if it's not a snake or too blurry. Be strict - the image must be clear enough to reliably identify specific snake species. Respond with exactly one of these two words only.` 
-      }
-    ];
+// Helper function to make OpenRouter API calls with vision support and model fallback
+async function callOpenRouterWithVision(
+  textPrompt: string, 
+  imageBase64: string | null = null, 
+  retries = 2
+): Promise<string> {
+  // Rate limiting
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await delay(MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+  }
+  lastRequestTime = Date.now();
 
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: { parts: parts },
-      config: {
-        temperature: 0.1,
+  // Build content array for vision
+  const content: any[] = [];
+  
+  if (imageBase64) {
+    content.push({
+      type: "image_url",
+      image_url: {
+        url: `data:image/jpeg;base64,${imageBase64}`
       }
     });
-
-    const result = response.text?.toLowerCase().trim() || '';
-    return result.includes('snake_present');
-  } catch (error) {
-    console.error("Image validation error:", error);
-    return false;
   }
-};
+  
+  content.push({
+    type: "text",
+    text: textPrompt
+  });
+
+  // Try each model until one works
+  for (let modelAttempt = 0; modelAttempt < VISION_MODELS.length; modelAttempt++) {
+    const modelToUse = VISION_MODELS[(currentModelIndex + modelAttempt) % VISION_MODELS.length];
+    
+    const requestBody = {
+      model: modelToUse,
+      messages: [
+        {
+          role: "user",
+          content: content
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 2000
+    };
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (!OPENROUTER_API_KEY) {
+          throw new Error('OpenRouter API key not found. Please set OPENROUTER_API_KEY in your .env file.');
+        }
+
+        console.log(`Trying model: ${modelToUse} (attempt ${attempt + 1})`);
+        
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": window.location.origin,
+            "X-Title": "SerpentID Snake Identifier"
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (response.status === 429) {
+          console.log(`Rate limit hit on ${modelToUse}, trying next model...`);
+          // Move to next model
+          currentModelIndex = (currentModelIndex + 1) % VISION_MODELS.length;
+          await delay(1000);
+          break; // Break inner retry loop, try next model
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error(`API Error: ${response.status} - ${errorText}`);
+          
+          if (attempt < retries) {
+            await delay(2000 * (attempt + 1));
+            continue;
+          }
+          // Try next model
+          break;
+        }
+
+        const data = await response.json();
+        console.log(`Success with model: ${modelToUse}`);
+        return data.choices[0].message.content;
+
+      } catch (error) {
+        console.error(`Attempt failed:`, error);
+        if (attempt === retries) {
+          break; // Try next model
+        }
+        await delay(2000 * (attempt + 1));
+      }
+    }
+  }
+  
+  throw new Error('All models are rate limited. Please wait 1-2 minutes and try again.');
+}
+
+// JSON response schema description for the prompt
+const schemaDescription = `
+{
+  "found": boolean (true if snake identified with 85%+ confidence),
+  "scientific_name": string,
+  "confidence": number (0-100),
+  "is_venomous": boolean,
+  "danger_level": "Safe" | "Moderate" | "High" | "Critical",
+  "locations": [{ "country": string, "continent_code": "AS"|"AF"|"NA"|"SA"|"EU"|"OC" }],
+  "search_term": string (search term for more info),
+  "data": {
+    "en": { "name": string, "description": string, "first_aid": string[], "toxicity_details": string, "fun_fact": string, "habitat_text": string },
+    "th": { "name": string (Thai), "description": string (Thai), "first_aid": string[] (Thai), "toxicity_details": string (Thai), "fun_fact": string (Thai), "habitat_text": string (Thai) }
+  },
+  "details": {
+    "en": {
+      "scientific_name": string, "family": string, "thai_names": string[], "other_names": string[],
+      "range": string, "habitat": string, "active_time": string, "diet": string,
+      "venom_toxicity": string, "danger_to_humans": string, "prevention": string, "behavior": string
+    },
+    "th": {
+      "scientific_name": string, "family": string (Thai), "thai_names": string[], "other_names": string[],
+      "range": string (Thai), "habitat": string (Thai), "active_time": string (Thai), "diet": string (Thai),
+      "venom_toxicity": string (Thai), "danger_to_humans": string (Thai), "prevention": string (Thai), "behavior": string (Thai)
+    }
+  }
+}`;
 
 export const identifySnake = async (input: string, type: 'image' | 'text'): Promise<SnakeAnalysisResult> => {
-  const systemInstruction = `
-    You are an expert herpetologist specializing in Asian and Global snake species, similar to the expertise found in 'A Field Guide to the Reptiles of Thailand' or 'ThailandSnakes.com'.
-    
-    CRITICAL INSTRUCTIONS FOR ACCURACY:
-    1. Only identify if you are HIGHLY confident (85%+ certainty).
-    2. If confidence is below 85%, set "found" to false.
-    3. Use morphological features: head shape, scale patterns, color bands, size, eye position.
-    4. Consider regional context - prioritize species found in that region.
-    5. "description": Use VERY SIMPLE, non-technical language for general audiences.
-    6. "locations": List up to 8 key countries/regions where this snake lives.
-    7. Provide accurate translations for text fields in English (en) and Thai (th).
-    8. "details": Populate with comprehensive field guide information:
-       - "thai_names": List common Thai names (e.g., งูจงอาง).
-       - "other_names": List alternative English names.
-       - "active_time": Diurnal, Nocturnal, or Crepuscular.
-       - "venom_toxicity": Specific venom type and clinical effects.
-       - "danger_to_humans": Detailed danger assessment.
-    9. If unsure about ANY aspect, be conservative and set "found" to false.
-    10. For image identification, analyze distinguishing features in detail before responding.
-  `;
+  const systemPrompt = `You are an expert herpetologist specializing in snake identification.
+
+INSTRUCTIONS:
+- If analyzing an image, carefully examine: head shape, scale patterns, coloration, body proportions, eye characteristics
+- Only set "found": true if you are 85%+ confident in the identification
+- If confidence is below 85%, set "found": false
+- Provide accurate bilingual data in English and Thai
+- Include comprehensive field guide details
+
+RESPOND WITH VALID JSON ONLY matching this exact schema:
+${schemaDescription}`;
 
   try {
-    // Validate image quality if it's an image input
-    if (type === 'image') {
-      const base64Data = input.includes('base64,') ? input.split(',')[1] : input;
-      const isValidSnakeImage = await validateImageQuality(base64Data);
-      
-      if (!isValidSnakeImage) {
-        return {
-          found: false,
-          scientific_name: '',
-          confidence: 0,
-          is_venomous: false,
-          danger_level: 'Safe',
-          locations: [],
-          google_search_term: '',
-          data: {
-            en: {
-              name: '',
-              description: 'Image quality too low or no snake detected. Please try a clearer photo.',
-              first_aid: [],
-              toxicity_details: '',
-              fun_fact: '',
-              habitat_text: ''
-            },
-            th: {
-              name: '',
-              description: 'คุณภาพภาพไม่ดีหรือไม่พบงู โปรดลองถ่ายรูปที่ชัดเจนขึ้น',
-              first_aid: [],
-              toxicity_details: '',
-              fun_fact: '',
-              habitat_text: ''
-            }
-          },
-          details: {
-            scientific_name: '',
-            family: '',
-            thai_names: [],
-            other_names: [],
-            range: '',
-            habitat: '',
-            active_time: '',
-            diet: '',
-            venom_toxicity: '',
-            danger_to_humans: '',
-            prevention: '',
-            behavior: ''
-          }
-        };
-      }
-    }
-
-    const parts = [];
+    let responseText: string;
     
     if (type === 'image') {
       const base64Data = input.includes('base64,') ? input.split(',')[1] : input;
-      parts.push({
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: base64Data
-        }
-      });
-      parts.push({ 
-        text: `Identify this snake with high accuracy. Analyze key identifying features:
-        - Head shape and size relative to body
-        - Scale patterns and arrangement
-        - Color and band patterns
-        - Eye position and pupil shape
-        - Specific regional species
-        
-        Provide detailed field guide information. Only confirm identification if you are 85%+ confident.` 
-      });
+      
+      const imagePrompt = `${systemPrompt}
+
+Analyze this snake image and identify the species. Provide complete field guide information.`;
+      
+      responseText = await callOpenRouterWithVision(imagePrompt, base64Data);
     } else {
-      parts.push({ 
-        text: `Retrieve accurate detailed field guide information about the snake species named "${input}". Only provide information if the name clearly refers to a real, identifiable snake species.` 
-      });
+      const textPrompt = `${systemPrompt}
+
+Provide complete field guide information for the snake species: "${input}"`;
+      
+      responseText = await callOpenRouterWithVision(textPrompt, null);
     }
 
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: { parts: parts },
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: snakeResponseSchema,
-        temperature: 0.1, 
-      }
-    });
-
-    if (!response.text) {
+    if (!responseText) {
       throw new Error("No response from AI");
     }
 
-    const data = JSON.parse(response.text) as SnakeAnalysisResult;
+    // Extract JSON from response
+    let jsonText = responseText;
     
-    // Additional validation: enforce confidence threshold
+    // Try to find JSON in the response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[0];
+    }
+    
+    // Clean up any markdown code blocks
+    jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const data = JSON.parse(jsonText) as SnakeAnalysisResult;
+    
+    // Enforce confidence threshold
     if (data.confidence < 85) {
       data.found = false;
     }
@@ -229,7 +210,65 @@ export const identifySnake = async (input: string, type: 'image' | 'text'): Prom
     return data;
 
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
-    throw error;
+    console.error("Snake Analysis Error:", error);
+    
+    // Return a structured error response
+    return {
+      found: false,
+      scientific_name: '',
+      confidence: 0,
+      is_venomous: false,
+      danger_level: 'Safe',
+      locations: [],
+      search_term: '',
+      data: {
+        en: {
+          name: '',
+          description: error instanceof Error ? `Analysis failed: ${error.message}` : 'Analysis failed. Please try again.',
+          first_aid: [],
+          toxicity_details: '',
+          fun_fact: '',
+          habitat_text: ''
+        },
+        th: {
+          name: '',
+          description: 'การวิเคราะห์ล้มเหลว กรุณาลองใหม่อีกครั้ง',
+          first_aid: [],
+          toxicity_details: '',
+          fun_fact: '',
+          habitat_text: ''
+        }
+      },
+      details: {
+        en: {
+          scientific_name: '',
+          family: '',
+          thai_names: [],
+          other_names: [],
+          range: '',
+          habitat: '',
+          active_time: '',
+          diet: '',
+          venom_toxicity: '',
+          danger_to_humans: '',
+          prevention: '',
+          behavior: ''
+        },
+        th: {
+          scientific_name: '',
+          family: '',
+          thai_names: [],
+          other_names: [],
+          range: '',
+          habitat: '',
+          active_time: '',
+          diet: '',
+          venom_toxicity: '',
+          danger_to_humans: '',
+          prevention: '',
+          behavior: ''
+        }
+      }
+    };
   }
 };

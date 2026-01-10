@@ -249,12 +249,29 @@ const SnakeIdentifier: React.FC = () => {
   // --- VIEW: ANALYZING ---
   if (view === 'analyzing') {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-slate-950 to-slate-950"></div>
-        <div className="relative z-10 flex flex-col items-center">
-          <SnakeAnimation />
-          <h2 className="mt-8 text-2xl font-bold text-emerald-400 animate-pulse">{t.analyzing}</h2>
-          <p className="text-slate-400 mt-2">{t.analyzingSub}</p>
+      <div className="min-h-screen bg-slate-950 text-white relative overflow-hidden">
+        {/* Navbar */}
+        <nav className="p-6 flex justify-center items-center z-50 relative">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-400">
+              <img src="images/logo.png" alt="SerpentID Logo" className="w-full h-full object-cover" />
+            </div>
+            <span className="font-bold text-xl tracking-tight">{t.appTitle}<span className="text-emerald-500">ID</span></span>
+          </div>
+          <button onClick={toggleLang} className="absolute right-6 px-3 py-1 bg-slate-900 rounded-full text-slate-400 hover:text-white transition-colors flex items-center gap-2 border border-slate-800">
+            <Languages size={14} />
+            <span className="text-xs font-bold uppercase">{lang === 'en' ? 'EN' : 'TH'}</span>
+          </button>
+        </nav>
+
+        {/* Analyzing Content */}
+        <div className="flex flex-col items-center justify-center p-6 relative" style={{height: 'calc(100vh - 120px)'}}>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-slate-950 to-slate-950"></div>
+          <div className="relative z-10 flex flex-col items-center">
+            <SnakeAnimation />
+            <h2 className="mt-8 text-2xl font-bold text-emerald-400 animate-pulse">{t.analyzing}</h2>
+            <p className="text-slate-400 mt-2">{t.analyzingSub}</p>
+          </div>
         </div>
       </div>
     );
@@ -263,7 +280,7 @@ const SnakeIdentifier: React.FC = () => {
   // --- VIEW: RESULT ---
   if (view === 'result' && data) {
     const localized = data.data[lang];
-    const details = data.details;
+    const details = data.details[lang];
 
     return (
       <div className="min-h-screen bg-slate-950 text-white pb-40">
@@ -396,7 +413,7 @@ const SnakeIdentifier: React.FC = () => {
                  <div className="flex-1">
                     <p className="text-sm text-slate-400 mb-2">Not sure? Compare with verified images.</p>
                     <a 
-                      href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(data.google_search_term)}`} 
+                      href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(data.search_term || data.scientific_name || '')}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-emerald-400 text-sm font-bold border border-emerald-500/30 px-3 py-2 rounded-lg hover:bg-emerald-500/10 transition-colors"
@@ -510,14 +527,14 @@ const SnakeIdentifier: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-emerald-500/30">
       
       {/* Navbar */}
-      <nav className="p-6 flex justify-between items-center z-50 relative">
+      <nav className="p-6 flex justify-center items-center z-50 relative">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center transform rotate-3">
-            <Activity className="text-slate-950" size={20} />
+          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-emerald-400">
+            <img src="images/logo.png" alt="SerpentID Logo" className="w-full h-full object-cover" />
           </div>
           <span className="font-bold text-xl tracking-tight">{t.appTitle}<span className="text-emerald-500">ID</span></span>
         </div>
-        <button onClick={toggleLang} className="px-3 py-1 bg-slate-900 rounded-full text-slate-400 hover:text-white transition-colors flex items-center gap-2 border border-slate-800">
+        <button onClick={toggleLang} className="absolute right-6 px-3 py-1 bg-slate-900 rounded-full text-slate-400 hover:text-white transition-colors flex items-center gap-2 border border-slate-800">
           <Languages size={14} />
           <span className="text-xs font-bold uppercase">{lang === 'en' ? 'EN' : 'TH'}</span>
         </button>

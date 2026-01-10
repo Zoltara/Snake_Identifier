@@ -34,12 +34,15 @@ export interface SnakeAnalysisResult {
   is_venomous: boolean;
   danger_level: 'Safe' | 'Moderate' | 'High' | 'Critical';
   locations: LocationData[];
-  google_search_term: string;
+  search_term: string;
   data: {
     en: LocalizedSnakeData;
     th: LocalizedSnakeData;
   };
-  details: DetailedInfo;
+  details: {
+    en: DetailedInfo;
+    th: DetailedInfo;
+  };
 }
 
 export type ViewState = 'home' | 'analyzing' | 'result';
