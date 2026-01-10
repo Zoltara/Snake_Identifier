@@ -289,9 +289,7 @@ const SnakeIdentifier: React.FC = () => {
           {image ? (
             <img src={image} alt="Snake" className="w-full h-full object-cover opacity-80" />
           ) : (
-             <div className="w-full h-full flex items-center justify-center bg-emerald-900/20">
-                <Search className="w-16 h-16 text-emerald-500/50" />
-             </div>
+             <img src="/AI_snakes.png" alt="AI Generated Snake" className="w-full h-full object-cover opacity-80" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
           <button onClick={() => setView('home')} className="absolute top-4 left-4 p-2 bg-black/50 backdrop-blur-md rounded-full text-white hover:bg-black/70 transition-colors z-20">
@@ -408,7 +406,7 @@ const SnakeIdentifier: React.FC = () => {
               </h3>
               <div className="flex gap-4 items-center">
                  <div className="w-16 h-16 bg-black rounded-lg overflow-hidden border border-slate-700">
-                    {image ? <img src={image} className="w-full h-full object-cover" alt="User upload" /> : <div className="w-full h-full bg-slate-800"></div>}
+                    <img src={image || "/AI_snakes.png"} className="w-full h-full object-cover" alt={image ? "User upload" : "AI Generated"} />
                  </div>
                  <div className="flex-1">
                     <p className="text-sm text-slate-400 mb-2">Not sure? Compare with verified images.</p>
