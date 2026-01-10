@@ -166,7 +166,7 @@ const DetailRow = ({ icon: Icon, label, value }: { icon: any, label: string, val
 const SnakeAnimation = () => (
   <div className="relative w-64 h-64 flex items-center justify-center">
     <img 
-      src="/images/animated-snake.gif" 
+      src="/animated-snake.gif" 
       alt="Analyzing..." 
       className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"
       style={{ animation: 'loop 2s infinite' }}
@@ -254,7 +254,7 @@ const SnakeIdentifier: React.FC = () => {
         <nav className="p-6 flex justify-center items-center z-50 relative">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 overflow-hidden">
-              <img src="/images/logo.png" alt="SerpentID Logo" className="w-full h-full object-contain" />
+              <img src="/logo.png" alt="SerpentID Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-bold text-xl tracking-tight">{t.appTitle}<span className="text-emerald-500">ID</span></span>
           </div>
@@ -530,7 +530,7 @@ const SnakeIdentifier: React.FC = () => {
       <nav className="p-6 flex justify-center items-center z-50 relative">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 overflow-hidden">
-            <img src="/images/logo.png" alt="SerpentID Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="SerpentID Logo" className="w-full h-full object-contain" />
           </div>
           <span className="font-bold text-xl tracking-tight">{t.appTitle}<span className="text-emerald-500">ID</span></span>
         </div>
