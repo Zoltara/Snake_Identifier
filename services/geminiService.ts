@@ -5,10 +5,12 @@ const OPENROUTER_API_KEY = process.env.API_KEY;
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 // Multiple vision models to try (in order of preference)
+// Note: Free tier models often have limitations. Consider using paid models for production.
 const VISION_MODELS = [
-  "google/gemini-flash-1.5",
-  "meta-llama/llama-3.2-11b-vision-instruct",
-  "google/gemini-flash-1.5-8b"
+  "openai/gpt-4o-mini",               // Fast, reliable, supports JSON mode
+  "google/gemini-flash-1.5-exp",      // Google's experimental model
+  "google/gemini-pro-1.5",            // Stable Google model
+  "meta-llama/llama-3.2-90b-vision-instruct"  // Larger LLaMA with better vision
 ];
 
 let currentModelIndex = 0;
@@ -56,7 +58,7 @@ async function callOpenRouterWithVision(
   for (let modelAttempt = 0; modelAttempt < VISION_MODELS.length; modelAttempt++) {
     const modelToUse = VISION_MODELS[(currentModelIndex + modelAttempt) % VISION_MODELS.length];
     
-    const requestBody = {
+    const requestBody: any = {
       model: modelToUse,
       messages: [
         {
@@ -65,8 +67,13 @@ async function callOpenRouterWithVision(
         }
       ],
       temperature: 0.1,
-      max_tokens: 2000
+      max_tokens: 3000  // Increased for detailed bilingual responses
     };
+
+    // Add JSON mode for models that support it
+    if (modelToUse.includes('gpt-4') || modelToUse.includes('gpt-3.5')) {
+      requestBody.response_format = { type: "json_object" };
+    }
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
@@ -165,6 +172,8 @@ const schemaDescription = `
 export const identifySnake = async (input: string, type: 'image' | 'text'): Promise<SnakeAnalysisResult> => {
   const systemPrompt = `You are an expert herpetologist specializing in snake identification.
 
+CRITICAL: You MUST respond with ONLY valid JSON. No explanations, no markdown, no additional text before or after the JSON object.
+
 INSTRUCTIONS:
 - If analyzing an image, carefully examine: head shape, scale patterns, coloration, body proportions, eye characteristics. Identify it directly - do NOT ask for clarification on images.
 - Only set "found": true if you are 85%+ confident in the identification
@@ -186,7 +195,9 @@ ${schemaDescription}`;
       
       const imagePrompt = `${systemPrompt}
 
-Analyze this snake image and identify the species. Provide complete field guide information.`;
+Analyze this snake image and identify the species. Provide complete field guide information.
+
+REMEMBER: Return ONLY the JSON object with no additional text, explanations, or markdown formatting.`;
       
       responseText = await callOpenRouterWithVision(imagePrompt, base64Data);
     } else {
@@ -198,7 +209,7 @@ IMPORTANT:
 - If "${input}" is a generic/ambiguous term that matches multiple snake species (like "python", "cobra", "viper", "boa", "rattlesnake", "mamba", "adder", "racer", "rat snake"), you MUST set "needs_clarification": true and provide 5-8 specific species names in "suggestions" array. Set "found": false in this case.
 - If "${input}" is already a specific species name (like "Ball Python", "King Cobra", "Burmese Python"), identify it directly with "found": true and "needs_clarification": false.
 
-Provide the response in the exact JSON schema format.`;
+REMEMBER: Return ONLY the JSON object with no additional text, explanations, or markdown formatting.`;
       
       responseText = await callOpenRouterWithVision(textPrompt, null);
     }
@@ -208,18 +219,34 @@ Provide the response in the exact JSON schema format.`;
     }
 
     // Extract JSON from response
-    let jsonText = responseText;
+    let jsonText = responseText.trim();
     
-    // Try to find JSON in the response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    // Clean up markdown code blocks first
+    jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    
+    // Try to find JSON object in the response (most greedy match)
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       jsonText = jsonMatch[0];
     }
     
-    // Clean up any markdown code blocks
-    jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    // Remove any text before the first { or after the last }
+    const firstBrace = jsonText.indexOf('{');
+    const lastBrace = jsonText.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+    }
 
-    const data = JSON.parse(jsonText) as SnakeAnalysisResult;
+    console.log('Attempting to parse JSON response (first 300 chars):', jsonText.substring(0, 300));
+    
+    let data: SnakeAnalysisResult;
+    try {
+      data = JSON.parse(jsonText) as SnakeAnalysisResult;
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('Failed to parse response. Full text (first 500 chars):', responseText.substring(0, 500));
+      throw new Error(`Invalid JSON response from AI. The model may not support structured output. Error: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`);
+    }
     
     // Enforce confidence threshold
     if (data.confidence < 85) {
