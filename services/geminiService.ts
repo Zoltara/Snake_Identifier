@@ -6,9 +6,9 @@ const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 // Multiple vision models to try (in order of preference)
 const VISION_MODELS = [
-  "qwen/qwen-2-vl-7b-instruct:free",
-  "meta-llama/llama-3.2-11b-vision-instruct:free",
-  "google/gemini-2.0-flash-exp:free"
+  "google/gemini-flash-1.5",
+  "meta-llama/llama-3.2-11b-vision-instruct",
+  "google/gemini-flash-1.5-8b"
 ];
 
 let currentModelIndex = 0;
@@ -95,6 +95,13 @@ async function callOpenRouterWithVision(
           break; // Break inner retry loop, try next model
         }
 
+        if (response.status === 404) {
+          console.log(`Model ${modelToUse} not found (404), trying next model...`);
+          // Move to next model immediately, don't retry
+          currentModelIndex = (currentModelIndex + 1) % VISION_MODELS.length;
+          break; // Break inner retry loop, try next model
+        }
+
         if (!response.ok) {
           const errorText = await response.text().catch(() => 'Unknown error');
           console.error(`API Error: ${response.status} - ${errorText}`);
@@ -121,7 +128,7 @@ async function callOpenRouterWithVision(
     }
   }
   
-  throw new Error('All models are rate limited. Please wait 1-2 minutes and try again.');
+  throw new Error('All AI models are currently unavailable. This may be due to rate limits, unavailable endpoints, or API key issues. Please check your API key and try again in 1-2 minutes.');
 }
 
 // JSON response schema description for the prompt
